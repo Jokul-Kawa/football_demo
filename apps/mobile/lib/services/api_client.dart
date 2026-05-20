@@ -9,57 +9,44 @@ class ApiClient {
 
   final String baseUrl;
 
-  Future<List<MatchSummary>> fetchMatches({String? stage}) async {
-    final uri = Uri.parse('$baseUrl/matches').replace(
-      queryParameters: {
-        if (stage != null && stage.isNotEmpty) 'stage': stage,
-      },
-    );
-    final json = await _get(uri);
+  Future<OperationsDashboard> fetchDashboard() async {
+    final json = await _get(Uri.parse('$baseUrl/dashboard/operations'));
+    return OperationsDashboard.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  Future<List<League>> fetchLeagues() async {
+    final json = await _get(Uri.parse('$baseUrl/leagues'));
     return (json['data'] as List<dynamic>)
-        .map((item) => MatchSummary.fromJson(item as Map<String, dynamic>))
+        .map((item) => League.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<MatchSummary>> fetchLiveMatches() async {
-    final json = await _get(Uri.parse('$baseUrl/live/matches'));
+  Future<List<ClubAdmission>> fetchClubAdmissions() async {
+    final json = await _get(Uri.parse('$baseUrl/club-admissions'));
     return (json['data'] as List<dynamic>)
-        .map((item) => MatchSummary.fromJson(item as Map<String, dynamic>))
+        .map((item) => ClubAdmission.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<Article>> fetchNews() async {
-    final json = await _get(Uri.parse('$baseUrl/news'));
+  Future<List<MatchOperation>> fetchMatchOperations() async {
+    final json = await _get(Uri.parse('$baseUrl/match-operations'));
     return (json['data'] as List<dynamic>)
-        .map((item) => Article.fromJson(item as Map<String, dynamic>))
+        .map((item) => MatchOperation.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<List<BroadcastLink>> fetchBroadcastLinks() async {
-    final json = await _get(Uri.parse('$baseUrl/broadcast-links'));
+  Future<List<VenueInspection>> fetchVenueInspections() async {
+    final json = await _get(Uri.parse('$baseUrl/venue-inspections'));
     return (json['data'] as List<dynamic>)
-        .map((item) => BroadcastLink.fromJson(item as Map<String, dynamic>))
+        .map((item) => VenueInspection.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 
-  Future<void> saveNotificationPreferences({
-    required String deviceId,
-    required List<String> favoriteTeamIds,
-    required List<int> reminderMinutes,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/notification-preferences'),
-      headers: {'content-type': 'application/json'},
-      body: jsonEncode({
-        'deviceId': deviceId,
-        'favoriteTeamIds': favoriteTeamIds,
-        'reminderMinutes': reminderMinutes,
-      }),
-    );
-
-    if (response.statusCode >= 400) {
-      throw ApiException('提醒偏好保存失败：${response.statusCode}');
-    }
+  Future<List<AiReport>> fetchAiReports() async {
+    final json = await _get(Uri.parse('$baseUrl/ai/reports'));
+    return (json['data'] as List<dynamic>)
+        .map((item) => AiReport.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {

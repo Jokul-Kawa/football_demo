@@ -1,164 +1,234 @@
-class MatchSummary {
-  const MatchSummary({
-    required this.id,
-    required this.stageName,
-    required this.venue,
-    required this.beijingKickoff,
-    required this.status,
-    required this.homeTeam,
-    required this.awayTeam,
-    this.clockMinute,
-    this.homeScore,
-    this.awayScore,
-    this.events = const [],
-    this.broadcastLinks = const [],
+class OperationsDashboard {
+  const OperationsDashboard({
+    required this.generatedAt,
+    required this.leagueTotal,
+    required this.activeLeagues,
+    required this.admissionTotal,
+    required this.matchOperationTotal,
+    required this.venueInspectionTotal,
+    required this.openRiskAlerts,
+    required this.upcomingTasks,
   });
 
-  final String id;
-  final String stageName;
-  final String venue;
-  final String beijingKickoff;
-  final String status;
-  final MatchTeam homeTeam;
-  final MatchTeam awayTeam;
-  final int? clockMinute;
-  final int? homeScore;
-  final int? awayScore;
-  final List<LiveEvent> events;
-  final List<BroadcastLink> broadcastLinks;
+  final String generatedAt;
+  final int leagueTotal;
+  final int activeLeagues;
+  final int admissionTotal;
+  final int matchOperationTotal;
+  final int venueInspectionTotal;
+  final List<RiskAlert> openRiskAlerts;
+  final List<WorkflowTask> upcomingTasks;
 
-  factory MatchSummary.fromJson(Map<String, dynamic> json) {
-    return MatchSummary(
-      id: json['id'] as String,
-      stageName: json['stageName'] as String,
-      venue: json['venue'] as String,
-      beijingKickoff: json['beijingKickoff'] as String,
-      status: json['status'] as String,
-      clockMinute: json['clockMinute'] as int?,
-      homeScore: json['homeScore'] as int?,
-      awayScore: json['awayScore'] as int?,
-      homeTeam: MatchTeam.fromJson(json['homeTeam'] as Map<String, dynamic>),
-      awayTeam: MatchTeam.fromJson(json['awayTeam'] as Map<String, dynamic>),
-      events: (json['events'] as List<dynamic>? ?? const [])
-          .map((item) => LiveEvent.fromJson(item as Map<String, dynamic>))
+  factory OperationsDashboard.fromJson(Map<String, dynamic> json) {
+    return OperationsDashboard(
+      generatedAt: json['generatedAt'] as String,
+      leagueTotal: (json['leagues'] as Map<String, dynamic>)['total'] as int,
+      activeLeagues: (json['leagues'] as Map<String, dynamic>)['active'] as int,
+      admissionTotal: (json['admissions'] as Map<String, dynamic>)['total'] as int,
+      matchOperationTotal: (json['matchOperations'] as Map<String, dynamic>)['total'] as int,
+      venueInspectionTotal: (json['venueInspections'] as Map<String, dynamic>)['total'] as int,
+      openRiskAlerts: (json['openRiskAlerts'] as List<dynamic>? ?? const [])
+          .map((item) => RiskAlert.fromJson(item as Map<String, dynamic>))
           .toList(),
-      broadcastLinks: (json['broadcastLinks'] as List<dynamic>? ?? const [])
-          .map((item) => BroadcastLink.fromJson(item as Map<String, dynamic>))
+      upcomingTasks: (json['upcomingTasks'] as List<dynamic>? ?? const [])
+          .map((item) => WorkflowTask.fromJson(item as Map<String, dynamic>))
           .toList(),
     );
   }
 }
 
-class MatchTeam {
-  const MatchTeam({
+class League {
+  const League({
+    required this.id,
     required this.name,
-    this.id,
-    this.slot,
-    this.group,
-    this.placeholder = false,
-  });
-
-  final String? id;
-  final String name;
-  final String? slot;
-  final String? group;
-  final bool placeholder;
-
-  factory MatchTeam.fromJson(Map<String, dynamic> json) {
-    return MatchTeam(
-      id: json['id'] as String?,
-      name: json['name'] as String,
-      slot: json['slot'] as String?,
-      group: json['group'] as String?,
-      placeholder: json['placeholder'] as bool? ?? false,
-    );
-  }
-}
-
-class LiveEvent {
-  const LiveEvent({
-    required this.id,
-    required this.type,
-    required this.description,
-    required this.createdAt,
-    this.minute,
-    this.playerName,
+    required this.season,
+    required this.status,
+    required this.clubCount,
   });
 
   final String id;
-  final String type;
-  final String description;
-  final String createdAt;
-  final int? minute;
-  final String? playerName;
+  final String name;
+  final String season;
+  final String status;
+  final int clubCount;
 
-  factory LiveEvent.fromJson(Map<String, dynamic> json) {
-    return LiveEvent(
+  factory League.fromJson(Map<String, dynamic> json) {
+    return League(
       id: json['id'] as String,
-      type: json['type'] as String,
-      description: json['description'] as String,
-      createdAt: json['createdAt'] as String,
-      minute: json['minute'] as int?,
-      playerName: json['playerName'] as String?,
+      name: json['name'] as String,
+      season: json['season'] as String,
+      status: json['status'] as String,
+      clubCount: json['clubCount'] as int,
     );
   }
 }
 
-class Article {
-  const Article({
+class ClubAdmission {
+  const ClubAdmission({
     required this.id,
+    required this.season,
+    required this.leagueId,
+    required this.clubId,
+    required this.status,
+    required this.currentReviewer,
+    required this.aiFindings,
+  });
+
+  final String id;
+  final String season;
+  final String leagueId;
+  final String clubId;
+  final String status;
+  final String currentReviewer;
+  final List<String> aiFindings;
+
+  factory ClubAdmission.fromJson(Map<String, dynamic> json) {
+    return ClubAdmission(
+      id: json['id'] as String,
+      season: json['season'] as String,
+      leagueId: json['leagueId'] as String,
+      clubId: json['clubId'] as String,
+      status: json['status'] as String,
+      currentReviewer: json['currentReviewer'] as String? ?? '未指定',
+      aiFindings: (json['aiFindings'] as List<dynamic>? ?? const []).map((item) => item.toString()).toList(),
+    );
+  }
+}
+
+class MatchOperation {
+  const MatchOperation({
+    required this.id,
+    required this.leagueId,
+    required this.round,
+    required this.homeClubId,
+    required this.awayClubId,
+    required this.status,
+    required this.riskLevel,
+    required this.tasks,
+  });
+
+  final String id;
+  final String leagueId;
+  final int round;
+  final String homeClubId;
+  final String awayClubId;
+  final String status;
+  final String riskLevel;
+  final List<WorkflowTask> tasks;
+
+  factory MatchOperation.fromJson(Map<String, dynamic> json) {
+    return MatchOperation(
+      id: json['id'] as String,
+      leagueId: json['leagueId'] as String,
+      round: json['round'] as int,
+      homeClubId: json['homeClubId'] as String,
+      awayClubId: json['awayClubId'] as String,
+      status: json['status'] as String,
+      riskLevel: json['riskLevel'] as String,
+      tasks: (json['tasks'] as List<dynamic>? ?? const [])
+          .map((item) => WorkflowTask.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class VenueInspection {
+  const VenueInspection({
+    required this.id,
+    required this.venueName,
+    required this.status,
+    required this.score,
+  });
+
+  final String id;
+  final String venueName;
+  final String status;
+  final int score;
+
+  factory VenueInspection.fromJson(Map<String, dynamic> json) {
+    return VenueInspection(
+      id: json['id'] as String,
+      venueName: json['venueName'] as String,
+      status: json['status'] as String,
+      score: json['score'] as int,
+    );
+  }
+}
+
+class AiReport {
+  const AiReport({
+    required this.id,
+    required this.reportType,
     required this.title,
     required this.summary,
-    required this.category,
-    required this.sourceName,
-    required this.publishedAt,
+    required this.reviewStatus,
+  });
+
+  final String id;
+  final String reportType;
+  final String title;
+  final String summary;
+  final String reviewStatus;
+
+  factory AiReport.fromJson(Map<String, dynamic> json) {
+    return AiReport(
+      id: json['id'] as String,
+      reportType: json['reportType'] as String,
+      title: json['title'] as String,
+      summary: json['summary'] as String,
+      reviewStatus: json['reviewStatus'] as String,
+    );
+  }
+}
+
+class RiskAlert {
+  const RiskAlert({
+    required this.id,
+    required this.severity,
+    required this.title,
+    required this.description,
+  });
+
+  final String id;
+  final String severity;
+  final String title;
+  final String description;
+
+  factory RiskAlert.fromJson(Map<String, dynamic> json) {
+    return RiskAlert(
+      id: json['id'] as String,
+      severity: json['severity'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+    );
+  }
+}
+
+class WorkflowTask {
+  const WorkflowTask({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.area,
+    this.ownerRole,
+    this.dueAt,
   });
 
   final String id;
   final String title;
-  final String summary;
-  final String category;
-  final String sourceName;
-  final String publishedAt;
+  final String status;
+  final String? area;
+  final String? ownerRole;
+  final String? dueAt;
 
-  factory Article.fromJson(Map<String, dynamic> json) {
-    return Article(
+  factory WorkflowTask.fromJson(Map<String, dynamic> json) {
+    return WorkflowTask(
       id: json['id'] as String,
       title: json['title'] as String,
-      summary: json['summary'] as String,
-      category: json['category'] as String,
-      sourceName: json['sourceName'] as String,
-      publishedAt: json['publishedAt'] as String,
+      status: json['status'] as String,
+      area: json['area'] as String?,
+      ownerRole: json['ownerRole'] as String?,
+      dueAt: json['dueAt'] as String?,
     );
   }
 }
-
-class BroadcastLink {
-  const BroadcastLink({
-    required this.id,
-    required this.label,
-    required this.provider,
-    required this.url,
-    required this.authorized,
-    required this.note,
-  });
-
-  final String id;
-  final String label;
-  final String provider;
-  final String url;
-  final bool authorized;
-  final String note;
-
-  factory BroadcastLink.fromJson(Map<String, dynamic> json) {
-    return BroadcastLink(
-      id: json['id'] as String,
-      label: json['label'] as String,
-      provider: json['provider'] as String,
-      url: json['url'] as String,
-      authorized: json['authorized'] as bool? ?? false,
-      note: json['note'] as String? ?? '',
-    );
-  }
-}
-

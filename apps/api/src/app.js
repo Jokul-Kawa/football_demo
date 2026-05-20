@@ -1,5 +1,5 @@
 import { createStore } from './store.js';
-import { methodNotAllowed, notFound, parseUrl, readJson, requireAdmin, sendError, sendJson, sendSseHeaders } from './http.js';
+import { methodNotAllowed, notFound, parseUrl, readJson, requireAdmin, sendError, sendJson } from './http.js';
 
 export function createApp(options = {}) {
   const store = options.store ?? createStore();
@@ -16,120 +16,108 @@ export function createApp(options = {}) {
       if (request.method === 'GET' && path === '/health') {
         return sendJson(response, 200, {
           ok: true,
-          service: 'world-cup-2026-assistant-api',
+          service: 'cfl-intelligent-operations-api',
           generatedAt: store.state.generatedAt
         }, corsHeaders());
       }
 
-      if (request.method === 'GET' && path === '/matches') {
-        return sendJson(response, 200, {
-          data: store.listMatches(Object.fromEntries(url.searchParams.entries())),
-          total: store.listMatches(Object.fromEntries(url.searchParams.entries())).length
-        }, corsHeaders());
+      if (request.method === 'GET' && path === '/dashboard/operations') {
+        return sendJson(response, 200, { data: store.getDashboardOperations() }, corsHeaders());
       }
 
-      const matchDetail = path.match(/^\/matches\/([^/]+)$/);
-      if (request.method === 'GET' && matchDetail) {
-        const match = store.getMatch(matchDetail[1]);
-        if (!match) {
+      if (request.method === 'GET' && path === '/leagues') {
+        return sendJson(response, 200, collectionPayload(store.list('leagues', query(url))), corsHeaders());
+      }
+
+      if (request.method === 'GET' && path === '/clubs') {
+        return sendJson(response, 200, collectionPayload(store.list('clubs', query(url))), corsHeaders());
+      }
+
+      const collectionRoute = matchCollectionRoute(path, store);
+      if (collectionRoute) {
+        return await handleCollectionRoute(request, response, url, collectionRoute);
+      }
+
+      const detailRoute = matchDetailRoute(path);
+      if (detailRoute) {
+        if (detailRoute.sensitive) {
+          requireAdmin(request);
+        }
+        const item = store.getById(detailRoute.collection, detailRoute.id);
+        if (!item) {
           return notFound(response);
         }
-        return sendJson(response, 200, { data: hydrateMatch(match, store) }, corsHeaders());
+        return sendJson(response, 200, { data: item }, corsHeaders());
       }
 
-      if (request.method === 'GET' && path === '/live/matches') {
-        return sendJson(response, 200, { data: store.listLiveMatches().map((match) => hydrateMatch(match, store)) }, corsHeaders());
-      }
-
-      if (request.method === 'GET' && path === '/news') {
-        return sendJson(response, 200, { data: store.listNews() }, corsHeaders());
-      }
-
-      if (request.method === 'GET' && path === '/broadcast-links') {
-        return sendJson(response, 200, { data: store.state.broadcastLinks }, corsHeaders());
-      }
-
-      if (request.method === 'POST' && path === '/notification-preferences') {
-        const payload = await readJson(request);
-        return sendJson(response, 201, { data: store.saveNotificationPreference(payload) }, corsHeaders());
-      }
-
-      if (request.method === 'GET' && path === '/notification-preferences') {
-        const deviceId = url.searchParams.get('deviceId');
-        const preference = deviceId ? store.getNotificationPreference(deviceId) : null;
-        if (!preference) {
-          return notFound(response);
-        }
-        return sendJson(response, 200, { data: preference }, corsHeaders());
-      }
-
-      const streamMatch = path.match(/^\/stream\/matches\/([^/]+)$/);
-      if (request.method === 'GET' && streamMatch) {
-        const match = store.getMatch(streamMatch[1]);
-        if (!match) {
-          return notFound(response);
-        }
-
-        sendSseHeaders(response);
-        response.write(`event: snapshot\n`);
-        response.write(`data: ${JSON.stringify(hydrateMatch(match, store))}\n\n`);
-        const removeClient = store.addSseClient(match.id, response);
-        request.on('close', removeClient);
-        return;
-      }
-
-      const adminStatus = path.match(/^\/admin\/matches\/([^/]+)\/status$/);
-      if (adminStatus) {
+      const admissionReview = path.match(/^\/club-admissions\/([^/]+)\/review$/);
+      if (admissionReview) {
         if (request.method !== 'POST') {
           return methodNotAllowed(response);
         }
-        requireAdmin(request);
+        const actor = requireAdmin(request);
         const payload = await readJson(request);
-        const match = store.updateMatchStatus(adminStatus[1], payload);
-        if (!match) {
+        const admission = store.updateAdmissionStatus(admissionReview[1], payload, actor);
+        if (!admission) {
           return notFound(response);
         }
-        store.broadcastMatch(match.id, hydrateMatch(match, store));
-        return sendJson(response, 200, { data: hydrateMatch(match, store) }, corsHeaders());
+        return sendJson(response, 200, { data: admission }, corsHeaders());
       }
 
-      const adminEvent = path.match(/^\/admin\/matches\/([^/]+)\/events$/);
-      if (adminEvent) {
+      const matchIncident = path.match(/^\/match-operations\/([^/]+)\/incidents$/);
+      if (matchIncident) {
         if (request.method !== 'POST') {
           return methodNotAllowed(response);
         }
-        requireAdmin(request);
+        const actor = requireAdmin(request);
         const payload = await readJson(request);
-        const event = store.addMatchEvent(adminEvent[1], payload);
-        if (!event) {
+        const incident = store.addMatchIncident(matchIncident[1], payload, actor);
+        if (!incident) {
           return notFound(response);
         }
-        store.broadcastMatch(adminEvent[1], hydrateMatch(store.getMatch(adminEvent[1]), store));
-        return sendJson(response, 201, { data: event }, corsHeaders());
+        return sendJson(response, 201, { data: incident }, corsHeaders());
       }
 
-      if (path === '/admin/news') {
+      if (path === '/ai/reports/generate') {
         if (request.method !== 'POST') {
           return methodNotAllowed(response);
         }
-        requireAdmin(request);
+        const actor = requireAdmin(request);
         const payload = await readJson(request);
-        return sendJson(response, 201, { data: store.addArticle(payload) }, corsHeaders());
+        return sendJson(response, 201, { data: store.generateAiReport(payload, actor) }, corsHeaders());
       }
 
-      if (path === '/admin/broadcast-links') {
-        if (request.method !== 'POST') {
-          return methodNotAllowed(response);
-        }
+      if (request.method === 'GET' && path === '/ai/reports') {
+        return sendJson(response, 200, collectionPayload(store.list('aiReports', query(url))), corsHeaders());
+      }
+
+      if (request.method === 'GET' && path === '/audit-logs') {
         requireAdmin(request);
-        const payload = await readJson(request);
-        return sendJson(response, 201, { data: store.upsertBroadcastLink(payload) }, corsHeaders());
+        return sendJson(response, 200, collectionPayload(store.list('auditLogs', query(url))), corsHeaders());
       }
 
       return notFound(response);
     } catch (error) {
       return sendError(response, error);
     }
+  }
+
+  async function handleCollectionRoute(request, response, url, route) {
+    if (request.method === 'GET') {
+      if (route.sensitive) {
+        requireAdmin(request);
+      }
+      return sendJson(response, 200, collectionPayload(store.list(route.collection, query(url))), corsHeaders());
+    }
+
+    if (request.method !== 'POST') {
+      return methodNotAllowed(response);
+    }
+
+    const actor = requireAdmin(request);
+    const payload = await readJson(request);
+    const data = route.create(payload, actor);
+    return sendJson(response, 201, { data }, corsHeaders());
   }
 
   handler.store = store;
@@ -143,20 +131,76 @@ function normalizePath(pathname) {
   return pathname;
 }
 
-function hydrateMatch(match, store) {
+function query(url) {
+  return Object.fromEntries(url.searchParams.entries());
+}
+
+function collectionPayload(data) {
   return {
-    ...match,
-    broadcastLinks: match.broadcastLinkIds
-      .map((id) => store.state.broadcastLinks.find((link) => link.id === id))
-      .filter(Boolean)
+    data,
+    total: data.length
   };
+}
+
+function matchCollectionRoute(path, store) {
+  const routes = {
+    '/club-admissions': {
+      collection: 'clubAdmissions',
+      create: (payload, actor) => store.createClubAdmission(payload, actor)
+    },
+    '/match-operations': {
+      collection: 'matchOperations',
+      create: (payload, actor) => store.createMatchOperation(payload, actor)
+    },
+    '/venue-inspections': {
+      collection: 'venueInspections',
+      create: (payload, actor) => store.createVenueInspection(payload, actor)
+    },
+    '/player-registrations': {
+      collection: 'playerRegistrations',
+      sensitive: true,
+      create: (payload, actor) => store.createPlayerRegistration(payload, actor)
+    },
+    '/discipline-cases': {
+      collection: 'disciplineCases',
+      sensitive: true,
+      create: (payload, actor) => store.createDisciplineCase(payload, actor)
+    }
+  };
+
+  const route = routes[path];
+  if (!route) {
+    return null;
+  }
+
+  return {
+    ...route
+  };
+}
+
+function matchDetailRoute(path) {
+  const routes = [
+    ['club-admissions', 'clubAdmissions', false],
+    ['match-operations', 'matchOperations', false],
+    ['venue-inspections', 'venueInspections', false],
+    ['player-registrations', 'playerRegistrations', true],
+    ['discipline-cases', 'disciplineCases', true]
+  ];
+
+  for (const [segment, collection, sensitive] of routes) {
+    const match = path.match(new RegExp(`^/${segment}/([^/]+)$`));
+    if (match) {
+      return { collection, id: match[1], sensitive };
+    }
+  }
+
+  return null;
 }
 
 function corsHeaders() {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type,x-admin-token'
+    'access-control-allow-headers': 'content-type,x-admin-token,x-actor-id,x-actor-name,x-actor-role'
   };
 }
-

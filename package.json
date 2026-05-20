@@ -1,8 +1,8 @@
 {
-  "name": "world-cup-2026-assistant",
+  "name": "cfl-intelligent-operations-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "2026 World Cup assistant MVP for China mainland users.",
+  "description": "CFL professional league intelligent operations platform MVP.",
   "workspaces": [
     "apps/api"
   ],
@@ -15,4 +15,3 @@
     "node": ">=20"
   }
 }
-

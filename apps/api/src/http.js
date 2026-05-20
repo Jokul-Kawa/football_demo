@@ -50,6 +50,12 @@ export function requireAdmin(request) {
     error.statusCode = 401;
     throw error;
   }
+
+  return {
+    id: request.headers['x-actor-id'] ?? 'dev-admin',
+    name: request.headers['x-actor-name'] ?? '开发管理员',
+    role: request.headers['x-actor-role'] ?? 'cfl_admin'
+  };
 }
 
 export function parseUrl(request) {
@@ -64,4 +70,3 @@ export function sendSseHeaders(response) {
     'x-accel-buffering': 'no'
   });
 }
-

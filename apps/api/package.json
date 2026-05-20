@@ -1,9 +1,9 @@
 {
-  "name": "@world-cup-2026-assistant/api",
+  "name": "@cfl-operations/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "REST and SSE API for the World Cup 2026 assistant MVP.",
+  "description": "REST API for the CFL professional league intelligent operations MVP.",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
@@ -13,4 +13,3 @@
     "node": ">=20"
   }
 }
-

@@ -1,279 +1,369 @@
-const GROUPS = 'ABCDEFGHIJKL'.split('');
-const STADIUMS = [
-  'Mexico City Stadium',
-  'Guadalajara Stadium',
-  'Monterrey Stadium',
-  'Toronto Stadium',
-  'Vancouver Stadium',
-  'Los Angeles Stadium',
-  'San Francisco Bay Area Stadium',
-  'Seattle Stadium',
-  'Dallas Stadium',
-  'Houston Stadium',
-  'Kansas City Stadium',
-  'Atlanta Stadium',
-  'Miami Stadium',
-  'Boston Stadium',
-  'Philadelphia Stadium',
-  'New York New Jersey Stadium'
-];
-
-const HOST_TEAMS = {
-  A1: '墨西哥',
-  B1: '加拿大',
-  D1: '美国'
-};
-
-const STAGES = {
-  group: '小组赛',
-  round32: '32强赛',
-  round16: '16强赛',
-  quarterFinal: '四分之一决赛',
-  semiFinal: '半决赛',
-  thirdPlace: '三四名决赛',
-  final: '决赛'
-};
-
 export function createSeedData(now = new Date()) {
-  const teams = createTeams();
-  const matches = createMatches(teams);
+  const generatedAt = now.toISOString();
+  const leagues = createLeagues();
+  const clubs = createClubs();
 
   return {
-    generatedAt: now.toISOString(),
-    teams,
-    matches,
-    articles: createArticles(now),
-    broadcastLinks: createBroadcastLinks(),
-    notificationPreferences: new Map(),
-    sseClients: new Map()
+    generatedAt,
+    leagues,
+    clubs,
+    clubAdmissions: createClubAdmissions(generatedAt),
+    matchOperations: createMatchOperations(generatedAt),
+    venueInspections: createVenueInspections(generatedAt),
+    playerRegistrations: createPlayerRegistrations(generatedAt),
+    disciplineCases: createDisciplineCases(generatedAt),
+    commercialAssets: createCommercialAssets(generatedAt),
+    workflowTasks: createWorkflowTasks(generatedAt),
+    riskAlerts: createRiskAlerts(generatedAt),
+    aiReports: [],
+    auditLogs: []
   };
 }
 
-function createTeams() {
-  return GROUPS.flatMap((group) =>
-    [1, 2, 3, 4].map((seed) => {
-      const slot = `${group}${seed}`;
-      return {
-        id: slot.toLowerCase(),
-        slot,
-        group,
-        name: HOST_TEAMS[slot] ?? `${slot} 待定`,
-        countryCode: HOST_TEAMS[slot] ? slot : null,
-        qualified: Boolean(HOST_TEAMS[slot])
-      };
-    })
-  );
-}
-
-function createMatches(teams) {
-  const bySlot = Object.fromEntries(teams.map((team) => [team.slot, team]));
-  const matches = [];
-  let id = 1;
-
-  for (const group of GROUPS) {
-    const pairings = [
-      [1, 2],
-      [3, 4],
-      [1, 3],
-      [2, 4],
-      [4, 1],
-      [2, 3]
-    ];
-
-    for (const [homeSeed, awaySeed] of pairings) {
-      matches.push(
-        createMatch({
-          id: id++,
-          stage: 'group',
-          group,
-          homeTeam: bySlot[`${group}${homeSeed}`],
-          awayTeam: bySlot[`${group}${awaySeed}`]
-        })
-      );
-    }
-  }
-
-  for (let i = 0; i < 16; i++) {
-    matches.push(
-      createMatch({
-        id: id++,
-        stage: 'round32',
-        homePlaceholder: `32强赛 ${i + 1} 主队`,
-        awayPlaceholder: `32强赛 ${i + 1} 客队`
-      })
-    );
-  }
-
-  for (let i = 0; i < 8; i++) {
-    matches.push(
-      createMatch({
-        id: id++,
-        stage: 'round16',
-        homePlaceholder: `16强赛 ${i + 1} 主队`,
-        awayPlaceholder: `16强赛 ${i + 1} 客队`
-      })
-    );
-  }
-
-  for (let i = 0; i < 4; i++) {
-    matches.push(
-      createMatch({
-        id: id++,
-        stage: 'quarterFinal',
-        homePlaceholder: `四分之一决赛 ${i + 1} 主队`,
-        awayPlaceholder: `四分之一决赛 ${i + 1} 客队`
-      })
-    );
-  }
-
-  for (let i = 0; i < 2; i++) {
-    matches.push(
-      createMatch({
-        id: id++,
-        stage: 'semiFinal',
-        homePlaceholder: `半决赛 ${i + 1} 主队`,
-        awayPlaceholder: `半决赛 ${i + 1} 客队`
-      })
-    );
-  }
-
-  matches.push(
-    createMatch({
-      id: id++,
-      stage: 'thirdPlace',
-      homePlaceholder: '三四名决赛主队',
-      awayPlaceholder: '三四名决赛客队'
-    })
-  );
-
-  matches.push(
-    createMatch({
-      id: id++,
-      stage: 'final',
-      homePlaceholder: '决赛主队',
-      awayPlaceholder: '决赛客队',
-      venue: 'New York New Jersey Stadium',
-      kickoffUtc: '2026-07-19T19:00:00.000Z'
-    })
-  );
-
-  return matches;
-}
-
-function createMatch({ id, stage, group = null, homeTeam, awayTeam, homePlaceholder, awayPlaceholder, venue, kickoffUtc }) {
-  const generatedKickoffUtc = kickoffUtc ?? getKickoffForMatch(id);
-  const match = {
-    id: String(id),
-    fifaMatchNumber: id,
-    stage,
-    stageName: STAGES[stage],
-    group,
-    venue: venue ?? STADIUMS[(id - 1) % STADIUMS.length],
-    kickoffUtc: generatedKickoffUtc,
-    beijingKickoff: formatBeijingTime(generatedKickoffUtc),
-    status: 'scheduled',
-    clockMinute: null,
-    lastUpdatedAt: new Date().toISOString(),
-    homeScore: null,
-    awayScore: null,
-    homeTeam: serializeMatchTeam(homeTeam, homePlaceholder),
-    awayTeam: serializeMatchTeam(awayTeam, awayPlaceholder),
-    events: [],
-    broadcastLinkIds: ['cctv5', 'yangshipin']
-  };
-
-  return match;
-}
-
-function serializeMatchTeam(team, placeholder) {
-  if (team) {
-    return {
-      id: team.id,
-      name: team.name,
-      slot: team.slot,
-      group: team.group,
-      placeholder: false
-    };
-  }
-
-  return {
-    id: null,
-    name: placeholder,
-    slot: null,
-    group: null,
-    placeholder: true
-  };
-}
-
-function getKickoffForMatch(matchNumber) {
-  const stageStart = matchNumber <= 72 ? '2026-06-11' : matchNumber <= 88 ? '2026-06-28' : matchNumber <= 96 ? '2026-07-04' : matchNumber <= 100 ? '2026-07-09' : matchNumber <= 102 ? '2026-07-14' : '2026-07-18';
-  const start = new Date(`${stageStart}T16:00:00.000Z`);
-  const dayOffset = Math.floor((matchNumber - 1) / 4);
-  const timeSlots = [16, 19, 22, 1];
-  const hour = timeSlots[(matchNumber - 1) % timeSlots.length];
-  const kickoff = new Date(start);
-  kickoff.setUTCDate(start.getUTCDate() + dayOffset);
-  kickoff.setUTCHours(hour, 0, 0, 0);
-  return kickoff.toISOString();
-}
-
-export function formatBeijingTime(isoString) {
-  const date = new Date(isoString);
-  const formatter = new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-  return formatter.format(date).replace(/\//g, '-');
-}
-
-function createArticles(now) {
+function createLeagues() {
   return [
     {
-      id: 'launch-guide',
-      title: '世足2026助手 MVP 启动',
-      summary: '赛程、提醒、实时比分、文字直播和官方直播入口将作为首版核心能力。',
-      category: '公告',
-      sourceName: '运营编辑',
-      imageUrl: null,
-      publishedAt: now.toISOString()
+      id: 'csl',
+      name: '中超联赛',
+      level: 1,
+      season: '2026',
+      operator: '中国足球职业联赛联合会',
+      clubCount: 16,
+      status: 'active'
     },
     {
-      id: 'compliance-note',
-      title: '视频观看将跳转官方持权平台',
-      summary: '未获得书面授权前，本应用不内嵌比赛视频，不抓取转播流。',
-      category: '合规',
-      sourceName: '运营编辑',
-      imageUrl: null,
-      publishedAt: now.toISOString()
+      id: 'cl1',
+      name: '中甲联赛',
+      level: 2,
+      season: '2026',
+      operator: '中国足球职业联赛联合会',
+      clubCount: 16,
+      status: 'active'
+    },
+    {
+      id: 'cl2',
+      name: '中乙联赛',
+      level: 3,
+      season: '2026',
+      operator: '中国足球职业联赛联合会',
+      clubCount: 24,
+      status: 'active'
+    },
+    {
+      id: 'elite-u21',
+      name: 'U21精英联赛',
+      level: 4,
+      season: '2026',
+      operator: '中国足球职业联赛联合会',
+      clubCount: 20,
+      status: 'planning'
     }
   ];
 }
 
-function createBroadcastLinks() {
+function createClubs() {
   return [
     {
-      id: 'cctv5',
-      label: 'CCTV-5 官方直播入口',
-      provider: 'CMG/CCTV',
-      url: 'https://tv.cctv.com/live/cctv5/',
-      type: 'external',
-      authorized: true,
-      note: '上线前需由运营确认具体赛事版权页面。'
+      id: 'shanghai-harbor',
+      name: '上海海港足球俱乐部',
+      shortName: '上海海港',
+      leagueId: 'csl',
+      province: '上海',
+      homeVenueId: 'saic-pudong-arena',
+      complianceGrade: 'A',
+      operatingStatus: 'normal'
     },
     {
-      id: 'yangshipin',
-      label: '央视频入口',
-      provider: '央视频',
-      url: 'https://www.yangshipin.cn/',
-      type: 'external',
-      authorized: true,
-      note: '仅作官方平台跳转，不内嵌视频。'
+      id: 'shandong-taishan',
+      name: '山东泰山足球俱乐部',
+      shortName: '山东泰山',
+      leagueId: 'csl',
+      province: '山东',
+      homeVenueId: 'jinan-olympic',
+      complianceGrade: 'B',
+      operatingStatus: 'watch'
+    },
+    {
+      id: 'nanjing-city',
+      name: '南京城市足球俱乐部',
+      shortName: '南京城市',
+      leagueId: 'cl1',
+      province: '江苏',
+      homeVenueId: 'wutaishan-stadium',
+      complianceGrade: 'B',
+      operatingStatus: 'normal'
+    },
+    {
+      id: 'hubei-youth-star',
+      name: '湖北青年星足球俱乐部',
+      shortName: '湖北青年星',
+      leagueId: 'cl2',
+      province: '湖北',
+      homeVenueId: 'hankou-cultural',
+      complianceGrade: 'C',
+      operatingStatus: 'rectification'
     }
   ];
+}
+
+function createClubAdmissions(now) {
+  return [
+    {
+      id: 'admission-2026-shanghai-harbor',
+      season: '2026',
+      leagueId: 'csl',
+      clubId: 'shanghai-harbor',
+      status: 'approved',
+      submittedAt: '2026-01-08T02:00:00.000Z',
+      updatedAt: now,
+      currentReviewer: '中足联准入组',
+      debtClearance: {
+        status: 'cleared',
+        playerSalaryConfirmed: true,
+        staffSalaryConfirmed: true,
+        internationalDebtCaseConfirmed: true,
+        publicNoticeStatus: 'completed',
+        complaints: 0
+      },
+      materials: [
+        createMaterial('license', '营业执照及俱乐部主体文件', 'verified'),
+        createMaterial('salary-confirmation', '球员及工作人员薪酬支付确认表', 'verified'),
+        createMaterial('youth-teams', '梯队建设证明材料', 'verified')
+      ],
+      aiFindings: ['材料完整，债务清偿证明已交叉校验。']
+    },
+    {
+      id: 'admission-2026-shandong-taishan',
+      season: '2026',
+      leagueId: 'csl',
+      clubId: 'shandong-taishan',
+      status: 'under_review',
+      submittedAt: '2026-01-10T03:30:00.000Z',
+      updatedAt: now,
+      currentReviewer: '地方会员协会初审',
+      debtClearance: {
+        status: 'pending',
+        playerSalaryConfirmed: true,
+        staffSalaryConfirmed: false,
+        internationalDebtCaseConfirmed: true,
+        publicNoticeStatus: 'open',
+        complaints: 1
+      },
+      materials: [
+        createMaterial('license', '营业执照及俱乐部主体文件', 'verified'),
+        createMaterial('salary-confirmation', '工作人员薪酬支付确认表', 'missing'),
+        createMaterial('youth-teams', '梯队建设证明材料', 'submitted')
+      ],
+      aiFindings: ['工作人员薪酬确认表缺失。', '公示期存在1条投诉，建议进入人工复核。']
+    }
+  ];
+}
+
+function createMatchOperations(now) {
+  return [
+    {
+      id: 'match-op-2026-csl-001',
+      season: '2026',
+      leagueId: 'csl',
+      round: 1,
+      homeClubId: 'shanghai-harbor',
+      awayClubId: 'shandong-taishan',
+      venueId: 'saic-pudong-arena',
+      kickoffAt: '2026-03-01T11:35:00.000Z',
+      status: 'pre_match',
+      riskLevel: 'medium',
+      supervisor: '赛事监督A',
+      updatedAt: now,
+      tasks: [
+        createTask('task-security-plan', '安保方案确认', 'security', 'done'),
+        createTask('task-broadcast-check', '转播机位与信号测试', 'broadcast', 'in_progress'),
+        createTask('task-media-zone', '媒体区动线复核', 'media', 'todo')
+      ],
+      incidents: []
+    }
+  ];
+}
+
+function createVenueInspections(now) {
+  return [
+    {
+      id: 'inspection-saic-pudong-2026-001',
+      venueId: 'saic-pudong-arena',
+      venueName: '上汽浦东足球场',
+      leagueId: 'csl',
+      inspector: '场馆巡检员A',
+      status: 'rectification_required',
+      score: 86,
+      inspectedAt: now,
+      checklist: [
+        createInspectionItem('grass', '草坪质量', 'pass', '草坪平整度达标。'),
+        createInspectionItem('lighting', '灯光照度', 'pass', '主转播机位照度达标。'),
+        createInspectionItem('security', '安保通道', 'fail', '客队球迷隔离通道标识不足。'),
+        createInspectionItem('broadcast', '转播条件', 'warning', '备用链路需赛前复测。')
+      ],
+      evidence: [
+        {
+          type: 'photo',
+          url: 'placeholder://venue/saic-pudong/security-corridor',
+          note: '客队球迷隔离通道现场图'
+        }
+      ]
+    }
+  ];
+}
+
+function createPlayerRegistrations(now) {
+  return [
+    {
+      id: 'reg-2026-001',
+      playerName: '示例球员A',
+      clubId: 'shanghai-harbor',
+      leagueId: 'csl',
+      type: 'domestic_registration',
+      status: 'approved',
+      submittedAt: '2026-02-01T02:00:00.000Z',
+      updatedAt: now,
+      checks: [
+        createCheck('identity', '身份信息核验', 'pass'),
+        createCheck('contract', '合同材料核验', 'pass'),
+        createCheck('quota', '报名名额校验', 'pass')
+      ]
+    },
+    {
+      id: 'transfer-2026-002',
+      playerName: '示例外援B',
+      clubId: 'shandong-taishan',
+      leagueId: 'csl',
+      type: 'international_transfer',
+      status: 'needs_supplement',
+      submittedAt: '2026-02-05T07:20:00.000Z',
+      updatedAt: now,
+      checks: [
+        createCheck('itc', '国际转会证明', 'pending'),
+        createCheck('contract', '合同材料核验', 'pass'),
+        createCheck('quota', '外援名额校验', 'warning')
+      ]
+    }
+  ];
+}
+
+function createDisciplineCases(now) {
+  return [
+    {
+      id: 'discipline-2026-001',
+      leagueId: 'csl',
+      matchOperationId: 'match-op-2026-csl-001',
+      subject: '赛后发布会迟到',
+      clubId: 'shandong-taishan',
+      status: 'evidence_collection',
+      severity: 'low',
+      openedAt: now,
+      dueAt: '2026-03-04T10:00:00.000Z',
+      evidence: ['比赛监督报告', '媒体区签到记录'],
+      aiDraftAvailable: true
+    }
+  ];
+}
+
+function createCommercialAssets(now) {
+  return [
+    {
+      id: 'asset-csl-title-2026',
+      leagueId: 'csl',
+      name: '中超冠名权益交付',
+      sponsor: '示例赞助商',
+      status: 'tracking',
+      fulfillmentRate: 72,
+      updatedAt: now
+    }
+  ];
+}
+
+function createWorkflowTasks(now) {
+  return [
+    {
+      id: 'workflow-admission-review',
+      title: '复核山东泰山准入补充材料',
+      ownerRole: 'league_admission_officer',
+      status: 'in_progress',
+      dueAt: '2026-01-18T10:00:00.000Z',
+      relatedType: 'clubAdmission',
+      relatedId: 'admission-2026-shandong-taishan',
+      updatedAt: now
+    },
+    {
+      id: 'workflow-venue-rectification',
+      title: '跟进上汽浦东足球场隔离通道整改',
+      ownerRole: 'venue_manager',
+      status: 'todo',
+      dueAt: '2026-02-20T10:00:00.000Z',
+      relatedType: 'venueInspection',
+      relatedId: 'inspection-saic-pudong-2026-001',
+      updatedAt: now
+    }
+  ];
+}
+
+function createRiskAlerts(now) {
+  return [
+    {
+      id: 'risk-admission-complaint',
+      type: 'admission',
+      severity: 'high',
+      title: '准入公示投诉待处理',
+      description: '山东泰山准入公示期存在投诉，建议由中足联准入组人工复核。',
+      relatedType: 'clubAdmission',
+      relatedId: 'admission-2026-shandong-taishan',
+      status: 'open',
+      createdAt: now
+    },
+    {
+      id: 'risk-broadcast-backup',
+      type: 'match_operation',
+      severity: 'medium',
+      title: '转播备用链路需复测',
+      description: '中超第1轮重点比赛备用链路未完成赛前复测。',
+      relatedType: 'matchOperation',
+      relatedId: 'match-op-2026-csl-001',
+      status: 'open',
+      createdAt: now
+    }
+  ];
+}
+
+function createMaterial(id, name, status) {
+  return {
+    id,
+    name,
+    status,
+    uploadedAt: status === 'missing' ? null : '2026-01-08T02:00:00.000Z'
+  };
+}
+
+function createTask(id, title, area, status) {
+  return {
+    id,
+    title,
+    area,
+    status,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function createInspectionItem(id, title, status, note) {
+  return {
+    id,
+    title,
+    status,
+    note
+  };
+}
+
+function createCheck(id, title, status) {
+  return {
+    id,
+    title,
+    status
+  };
 }
 

@@ -11,11 +11,11 @@ void main() {
     defaultValue: 'http://localhost:3000',
   );
 
-  runApp(WorldCupAssistantApp(apiBaseUrl: apiBaseUrl));
+  runApp(CflOperationsApp(apiBaseUrl: apiBaseUrl));
 }
 
-class WorldCupAssistantApp extends StatelessWidget {
-  const WorldCupAssistantApp({super.key, required this.apiBaseUrl});
+class CflOperationsApp extends StatelessWidget {
+  const CflOperationsApp({super.key, required this.apiBaseUrl});
 
   final String apiBaseUrl;
 
@@ -25,9 +25,9 @@ class WorldCupAssistantApp extends StatelessWidget {
       create: (_) => AppState(ApiClient(apiBaseUrl))..loadInitialData(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: '世足2026助手',
+        title: '中足联运营平台',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff006d77)),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff0f766e)),
           useMaterial3: true,
         ),
         home: const HomePage(),
